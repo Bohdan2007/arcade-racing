@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Адаптивні Аркадні Гонки</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden; 
+        }
+
+        #game-area {
+            width: 100vw;
+            height: 100vh; 
+            height: 100dvh; 
+            background-color: #4CAF50; 
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 600px) {
+            #game-area {
+                width: 400px;
+                height: 600px;
+                border: 4px solid #1a252f;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        #road {
+            width: 76%;
+            height: 100%;
+            background-color: #333; 
+            margin: 0 auto;
+            position: relative;
+            border-left: 4px solid white;
+            border-right: 4px solid white;
+        }
+
+        /* Розмітка */
+        .road-line {
+            width: 2%;
+            min-width: 4px;
+            height: 120%; 
+            background: repeating-linear-gradient(
+                to bottom,
+                white 0,
+                white 40px,
+                transparent 40px,
+                transparent 80px
+            );
+            position: absolute;
+            top: -80px; 
+            transform: translateX(-50%);
+        }
+
+        .line-1 { left: 33.33%; }
+        .line-2 { left: 66.66%; }
+
+        .car {
+            width: 16%;
+            aspect-ratio: 5 / 9; 
+            position: absolute;
+            border-radius: 6px;
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.4);
+            transition: left 0.12s ease-out;
+        }
+
+        .car::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 10%;
+            width: 80%;
+            height: 25%;
+            background-color: #111;
+            border-radius: 2px;
+        }
+        .car::after {
+            content: '';
+            position: absolute;
+            bottom: 15%;
+            left: 10%;
+            width: 80%;
+            height: 15%;
+            background-color: #111;
+            border-radius: 2px;
+        }
+
+        #player-car {
+            background-color: #3498db;
+            bottom: 20%;
+            z-index: 10;
+        }
+
+        .enemy-car {
+            background-color: #e74c3c;
+            transition: none; 
+        }
+
+        #nitro-btn {
+            position: absolute;
+            bottom: 4%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 8%;
+            min-height: 50px;
+            max-height: 70px;
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            border: none;
+            border-radius: 35px;
+            font-size: clamp(16px, 5vw, 24px); 
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(211, 84, 0, 0.5);
+            cursor: pointer;
+            z-index: 25;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+            touch-action: manipulation;
+        }
+
+        #score-board, #high-score-board {
+            position: absolute;
+            top: 2%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: clamp(14px, 4vw, 18px);
+            font-weight: bold;
+            z-index: 20;
+        }
+
+        #score-board { left: 3%; }
+        #high-score-board { right: 3%; color: #f1c40f; }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 30;
+        }
+
+        #game-over-screen h1 {
+            margin: 0 0 10px 0;
+            color: #e74c3c;
+            font-size: clamp(32px, 8vw, 48px);
+        }
+        
+        #new-record-msg {
+            color: #f1c40f;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        #restart-btn {
+            margin-top: 20px;
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-area">
+        <div id="score-board">Рахунок: 0</div>
+        <div id="high-score-board">Рекорд: 0</div>
+        
+        <div id="game-over-screen">
+            <h1>КРАШ! 💥</h1>
+            <div id="new-record-msg">🎉 НОВИЙ РЕКОРД! 🎉</div>
+            <p id="final-score">Твій рахунок: 0</p>
+            <button id="restart-btn">Спробувати знову</button>
+        </div>
+        
+        <div id="road">
+            <div class="road-line line-1" id="line1"></div>
+            <div class="road-line line-2" id="line2"></div>
+            
+            <div class="car" id="player-car"></div>
+        </div>
+
+        <button id="nitro-btn">НІТРО 🔥</button>
+    </div>
+
+    <script>
+        const playerCar = document.getElementById('player-car');
+        const gameArea = document.getElementById('game-area');
+        const road = document.getElementById('road');
+        const scoreBoard = document.getElementById('score-board');
+        const highScoreBoard = document.getElementById('high-score-board');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScore = document.getElementById('final-score');
+        const newRecordMsg = document.getElementById('new-record-msg');
+        const restartBtn = document.getElementById('restart-btn');
+        const nitroBtn = document.getElementById('nitro-btn');
+        const line1 = document.getElementById('line1');
+        const line2 = document.getElementById('line2');
+
+        const lanes = [8.66, 42.00, 75.33];
+        let currentLane = 1; 
+        
+        let score = 0;
+        let highScore = localStorage.getItem('racingHighScore') || 0;
+        highScoreBoard.innerText = 'Рекорд: ' + highScore;
+        
+        let gameActive = true;
+        
+        const BASE_SPEED = 5;
+        const NITRO_SPEED = 12; 
+        let speed = BASE_SPEED;
+
+        let enemyTimer = 0;
+        let enemies = [];
+        let lineOffset = -80;
+
+        playerCar.style.left = lanes[currentLane] + '%';
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.key === 'ArrowLeft' && currentLane > 0) {
+                currentLane--;
+            } else if (e.key === 'ArrowRight' && currentLane < 2) {
+                currentLane++;
+            }
+            
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                startNitro();
+            }
+            playerCar.style.left = lanes[currentLane] + '%';
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                stopNitro();
+            }
+        });
+
+        gameArea.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            const rect = gameArea.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            
+            if (clickX < rect.width / 2 && currentLane > 0) {
+                currentLane--;
+            } else if (clickX >= rect.width / 2 && currentLane < 2) {
+                currentLane++;
+            }
+            playerCar.style.left = lanes[currentLane] + '%';
+        });
+
+        function startNitro() {
+            if (!gameActive) return;
+            speed = NITRO_SPEED;
+            nitroBtn.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
+            nitroBtn.innerText = 'ЕФЕКТ 🔥🚀';
+        }
+
+        function stopNitro() {
+            speed = BASE_SPEED;
+            nitroBtn.style.background = 'linear-gradient(135deg, #e67e22 0%, #d35400 100%)';
+            nitroBtn.innerText = 'НІТРО 🔥';
+        }
+
+        nitroBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); startNitro(); });
+        nitroBtn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); startNitro(); });
+        nitroBtn.addEventListener('mouseup', (e) => { e.stopPropagation(); stopNitro(); });
+        nitroBtn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); stopNitro(); });
+        nitroBtn.addEventListener('mouseleave', () => { stopNitro(); });
+        nitroBtn.addEventListener('click', (e) => { e.stopPropagation(); });
+
+        function spawnEnemy() {
+            const enemy = document.createElement('div');
+            enemy.classList.add('car', 'enemy-car');
+            
+            const randomLane = Math.floor(Math.random() * 3);
+            enemy.style.left = lanes[randomLane] + '%';
+            enemy.style.top = '-100px'; 
+            
+            const colors = ['#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c'];
+            enemy.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            road.appendChild(enemy);
+            enemies.push(enemy);
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            lineOffset += speed;
+            if (lineOffset >= 0) {
+                lineOffset = -80; 
+            }
+            line1.style.top = lineOffset + 'px';
+            line2.style.top = lineOffset + 'px';
+
+            enemyTimer += speed * 0.3;
+            if (enemyTimer > 100) {
+                spawnEnemy();
+                enemyTimer = 0;
+            }
+
+            const currentRoadHeight = road.clientHeight;
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let enemy = enemies[i];
+                let currentTop = parseInt(enemy.style.top);
+                enemy.style.top = (currentTop + speed) + 'px';
+
+                if (checkCollision(playerCar, enemy)) {
+                    endGame();
+                    return;
+                }
+
+                if (currentTop > currentRoadHeight) {
+                    enemy.remove();
+                    enemies.splice(i, 1);
+                    score++;
+                    scoreBoard.innerText = 'Рахунок: ' + score;
+                }
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function checkCollision(player, enemy) {
+            const pRect = player.getBoundingClientRect();
+            const eRect = enemy.getBoundingClientRect();
+
+            return !(
+                pRect.top + 6 > eRect.bottom ||
+                pRect.bottom - 6 < eRect.top ||
+                pRect.right - 6 < eRect.left ||
+                pRect.left + 6 > eRect.right
+            );
+        }
+
+        function endGame() {
+            gameActive = false;
+            stopNitro();
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('racingHighScore', highScore);
+                highScoreBoard.innerText = 'Рекорд: ' + highScore;
+                newRecordMsg.style.display = 'block';
+            } else {
+                newRecordMsg.style.display = 'none';
+            }
+            
+            finalScore.innerText = 'Твій рахунок: ' + score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function resetGame() {
+            enemies.forEach(enemy => enemy.remove());
+            enemies = [];
+            
+            score = 0;
+            speed = BASE_SPEED;
+            enemyTimer = 0;
+            currentLane = 1;
+            playerCar.style.left = lanes[currentLane] + '%';
+            scoreBoard.innerText = 'Рахунок: 0';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            lineOffset = -80;
+            
+            updateGame();
+        }
+
+        restartBtn.addEventListener('click', resetGame);
+        updateGame();
+    </script>
+</body>
+</html>
